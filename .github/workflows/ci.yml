@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  database:
+    name: Database – migrations, seed, kiểm thử phân quyền
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Mô phỏng auth của Supabase
+        run: psql -v ON_ERROR_STOP=1 -q -f supabase/tests/ci/auth_stub.sql
+      - name: Chạy migrations
+        run: for f in supabase/migrations/*.sql; do echo "== $f"; psql -v ON_ERROR_STOP=1 -q -f "$f"; done
+      - name: Nạp dữ liệu mẫu
+        run: psql -v ON_ERROR_STOP=1 -q -f supabase/seed.sql
+      - name: Kiểm thử
+        run: |
+          psql -v ON_ERROR_STOP=1 -q -f supabase/tests/business_test.sql 2>&1 | tee test.log
+          ! grep -q FAIL test.log
+
+  frontend:
+    name: Frontend – kiểm tra cú pháp
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Kiểm tra JavaScript trong index.html
+        run: |
+          node -e "const s=require('fs').readFileSync('frontend/index.html','utf8');const m=[...s.matchAll(/<script>([\s\S]*?)<\/script>/g)].pop();require('fs').writeFileSync('app.js',m[1])"
+          node --check app.js

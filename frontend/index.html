@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Minh Tú – Chấm công</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,600;7..72,700&family=Be+Vietnam+Pro:wght@400;500;600&display=swap">
+<style>
+/* VOICE: friendly shop app, quick to use at the counter
+   IDEA: a library card; check-ins are stamps, the header is the book's cloth cover
+   PICTURE: the phone app itself – punch card with live clock on Home
+   COLOUR and TYPE: book-cloth burgundy, white pages, gold stamp accent; Literata + Be Vietnam Pro
+   LAYOUT: one phone-width column, burgundy header, fixed bottom bar: Trang chủ, Tác vụ, Tin nhắn, Tài khoản */
+:root{color-scheme:light dark;
+--bg:light-dark(#ffffff,#171214);--frame:light-dark(#efe8e5,#0d0a0b);--ink:light-dark(#1f1a1b,#f2ebe7);--muted:light-dark(#6d6264,#b5a9ab);
+--cloth:#7a1d2c;--cloth2:#5f1522;--gold:#e2a52e;--goldt:light-dark(#8a5e05,#f0c25e);
+--line:light-dark(#ebe4e1,#382d30);--soft:light-dark(#f7f2f0,#221a1d);--card:light-dark(#fff,#1d1719);
+--red:light-dark(#b3261e,#ff8a80);--ok:light-dark(#2e6b3a,#8fd19e);--acc:light-dark(#7a1d2c,#e58a99)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+html{background:var(--frame)}
+body{margin:0;color:var(--ink);font:16px/1.5 "Be Vietnam Pro",system-ui,sans-serif;overflow-x:clip}
+.app{max-width:520px;margin:auto;min-height:100vh;background:var(--bg);padding-bottom:calc(88px + env(safe-area-inset-bottom));box-shadow:0 0 40px rgba(0,0,0,.08)}
+h1,h2,.clock,.big-n,.brand{font-family:Literata,Georgia,serif}
+h1{font-size:30px;line-height:1.1;margin:0}
+h2{font-size:20px;line-height:1.25;margin:0 0 12px}
+h3{font-size:16px;margin:0}
+.hdr{background:var(--cloth);color:#fff;padding:calc(18px + env(safe-area-inset-top)) 20px 22px}
+.hdr .sub{color:#f3d9dd;font-size:14px;margin-top:4px}
+.brand{font-size:15px;font-weight:700;color:var(--gold);margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.badge-role{font:600 12px "Be Vietnam Pro",sans-serif;background:var(--cloth2);color:#f3d9dd;padding:4px 10px;border-radius:999px}
+.back{color:#f3d9dd;text-decoration:none;font-size:15px;display:inline-flex;align-items:center;min-height:36px;margin-bottom:4px}
+.pad{padding:18px 16px}
+.sec{margin-top:22px}
+.sec-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:10px}
+.sec-h a{color:var(--acc);font-weight:600;font-size:14px;text-decoration:none}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px}
+.punch{margin-top:-14px;border-top:8px solid var(--gold);box-shadow:0 8px 24px rgba(60,10,20,.08)}
+.muted{color:var(--muted)}.small{font-size:14px}
+.clock{font-size:60px;font-weight:700;line-height:1;margin:6px 0;font-variant-numeric:tabular-nums}
+.pills{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.pills label{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:999px;padding:8px 14px;min-height:44px;cursor:pointer;white-space:nowrap;font-size:15px}
+.pills input{accent-color:var(--cloth);width:18px;height:18px;margin:0}
+.btn{font:600 16px "Be Vietnam Pro",sans-serif;border:0;border-radius:12px;padding:10px 16px;min-height:44px;cursor:pointer;background:var(--cloth);color:#fff}
+.btn.big{width:100%;font-size:19px;padding:16px}
+.btn.alt{background:var(--soft);color:var(--ink);border:1px solid var(--line)}
+.btn.gold{background:var(--gold);color:#2a1a05}
+.btn.sm{min-height:38px;padding:6px 12px;font-size:14px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.stamp{display:inline-block;border:2px solid var(--acc);color:var(--acc);border-radius:6px;padding:0 6px;font:700 14px Literata,serif;transform:rotate(-2deg);white-space:nowrap}
+.stamp.late{border-color:var(--red);color:var(--red);transform:rotate(2deg)}
+.stamp.open{border-style:dashed;color:var(--goldt);border-color:var(--goldt)}
+.tag{display:inline-block;font-size:12px;font-weight:600;padding:3px 10px;border-radius:999px;background:var(--soft);white-space:nowrap}
+.tag.w{background:light-dark(#fdf0d2,#3b2c0c);color:var(--goldt)}.tag.ok{color:var(--ok);background:light-dark(#e6f3e8,#16281a)}.tag.no{color:var(--red);background:light-dark(#fbe9e7,#331512)}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.stat{background:var(--soft);border-radius:14px;padding:12px}
+.stat .l{font-size:13px;color:var(--muted)}
+.big-n{font-size:26px;font-weight:700;line-height:1.15;font-variant-numeric:tabular-nums}
+.money{font-family:Literata,serif;font-size:34px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1}
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.tile{display:flex;flex-direction:column;gap:8px;text-decoration:none;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;min-height:120px;position:relative}
+.tile svg{width:30px;height:30px;color:var(--cloth)}
+.tile b{font-size:16px}.tile span{font-size:13px;color:var(--muted)}
+.tile .cnt{position:absolute;top:12px;right:12px;background:var(--red);color:#fff;font-size:12px;font-weight:700;border-radius:999px;padding:2px 8px}
+.list{display:grid;gap:10px}
+.item{border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:grid;gap:6px;background:var(--card)}
+.item .r{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
+.acts{display:flex;gap:8px;flex-wrap:wrap}
+.who{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.who:last-child{border-bottom:0}
+.days{display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:6px;margin:0 -16px;padding-inline:16px}
+.day{flex:none;scroll-snap-align:start;width:56px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:14px;padding:8px 0;text-align:center;cursor:pointer;font-family:inherit;position:relative}
+.day b{display:block;font-size:19px}.day small{font-size:12px;color:var(--muted)}
+.day.on{background:var(--cloth);color:#fff;border-color:var(--cloth)}.day.on small{color:#f3d9dd}
+.day.mine::after{content:"";position:absolute;left:50%;bottom:5px;width:6px;height:6px;margin-left:-3px;border-radius:50%;background:var(--gold)}
+.day.today{box-shadow:inset 0 0 0 2px var(--gold)}
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:14px;background:var(--soft);border-radius:999px;padding:5px 12px;margin:0 6px 6px 0}
+.chip.me{background:var(--gold);color:#2a1a05;font-weight:600}
+.chip button{border:0;background:none;color:inherit;cursor:pointer;font-size:17px;padding:0 2px;line-height:1}
+.seg{display:flex;gap:6px;overflow-x:auto;margin-bottom:14px}
+.seg button{flex:none;font:500 14px "Be Vietnam Pro",sans-serif;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:8px 14px;min-height:40px;cursor:pointer}
+.seg button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+table{width:100%;border-collapse:collapse;font-size:15px}
+th{text-align:left;font-size:13px;font-weight:600;color:var(--muted);padding:8px 6px;border-bottom:2px solid var(--line)}
+td{padding:10px 6px;border-bottom:1px solid var(--line)}
+.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.f{display:grid;gap:6px;margin-bottom:12px}
+label.t{font-weight:600;font-size:14px}
+input,select,textarea{font:16px "Be Vietnam Pro",sans-serif;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-height:44px;width:100%}
+input[type=checkbox]{width:20px;min-height:20px;accent-color:var(--cloth)}
+input.rate{width:110px;text-align:right}
+.post{border-left:4px solid var(--line)}.post.pin{border-left-color:var(--gold)}
+.post p{margin:0;white-space:pre-line}
+.thread{display:flex;gap:12px;align-items:center;text-decoration:none;color:var(--ink);padding:12px 0;border-bottom:1px solid var(--line)}
+.av{flex:none;width:44px;height:44px;border-radius:50%;background:var(--soft);color:var(--acc);display:grid;place-items:center;font-weight:700;font-size:15px}
+.av.g{background:var(--cloth);color:#fff}
+.thread .tx{flex:1}.thread .pv{font-size:14px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chat{display:flex;flex-direction:column;gap:8px;padding-bottom:84px}
+.bub{max-width:80%;padding:9px 13px;border-radius:16px;background:var(--soft);align-self:flex-start;overflow-wrap:anywhere}
+.bub.mine{align-self:flex-end;background:var(--cloth);color:#fff}
+.bub small{display:block;font-size:11px;opacity:.7;margin-top:2px}
+.bub .from{font-size:12px;font-weight:600;color:var(--acc)}
+.composer{position:fixed;bottom:calc(68px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);width:min(100%,520px);display:flex;gap:8px;padding:10px 12px;background:var(--bg);border-top:1px solid var(--line)}
+.tabbar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:min(100%,520px);display:grid;grid-template-columns:repeat(4,1fr);background:var(--bg);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);z-index:5}
+.tabbar a{display:flex;flex-direction:column;align-items:center;gap:2px;padding:9px 0 8px;text-decoration:none;color:var(--muted);font-size:12px;font-weight:500;min-height:60px;position:relative}
+.tabbar svg{width:24px;height:24px}
+.tabbar a.on{color:var(--acc);font-weight:600}
+.tabbar .dot{position:absolute;top:6px;left:calc(50% + 8px);background:var(--red);color:#fff;font-size:10px;font-weight:700;border-radius:999px;padding:1px 6px}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.welcome{min-height:100vh;background:var(--cloth);color:#fff;display:flex;flex-direction:column;justify-content:center;gap:14px;padding:32px 24px}
+.welcome h1{font-size:40px}.welcome p{color:#f3d9dd;margin:0 0 12px}
+.welcome button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;width:100%;border:0;border-radius:16px;padding:18px 20px;cursor:pointer;font:600 19px "Be Vietnam Pro",sans-serif;background:#fff;color:var(--cloth)}
+.welcome button span{font-size:14px;font-weight:400;color:#6d6264}
+.welcome button.g{background:var(--gold);color:#2a1a05}.welcome button.g span{color:#4a3510}
+#toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(200px);background:var(--ink);color:var(--bg);padding:11px 18px;border-radius:12px;transition:transform .25s;z-index:9;max-width:90vw}
+#toast.show{transform:translateX(-50%) translateY(0)}
+@media(prefers-reduced-motion:reduce){#toast{transition:none}}
+.note{font-size:13px;color:var(--muted);margin-top:16px}
+.empty{color:var(--muted);text-align:center;padding:24px 0}
+</style></head>
+<body>
+<div class="app" id="app"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+<script>
+{
+let SH={};
+let ME=null;const QL='ql';
+const pad=n=>String(n).padStart(2,'0');
+const dk=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const pd=k=>{const[y,m,d]=k.split('-').map(Number);return new Date(y,m-1,d)};
+const addD=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x};
+const hm=m=>pad(Math.floor(m/60))+':'+pad(m%60);
+const nowMin=()=>{const d=new Date();return d.getHours()*60+d.getMinutes()};
+const DN=['CN','T2','T3','T4','T5','T6','T7'];
+const dm=k=>k.slice(8)+'/'+k.slice(5,7);
+const dl=k=>DN[pd(k).getDay()]+' '+dm(k);
+const money=v=>Math.round(v).toLocaleString('vi-VN')+' đ';
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const short=n=>n.trim().split(/\s+/).slice(-2).join(' ');
+const ini=n=>n.trim().split(/\s+/).slice(-2).map(w=>w[0]).join('').toUpperCase();
+const tk=()=>dk(new Date());
+function rng(s){return()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+
+function periodOf(d,p){p=p||S.set.payDay;let s=new Date(d.getFullYear(),d.getMonth(),p);if(d.getDate()<p)s=new Date(d.getFullYear(),d.getMonth()-1,p);return{s:dk(s),e:dk(addD(new Date(s.getFullYear(),s.getMonth()+1,p),-1))}}
+/* ---------- KẾT NỐI SUPABASE ---------- */
+const CFG=window.MINHTU_CONFIG||{};
+const sb=(CFG.url&&CFG.key&&window.supabase)?window.supabase.createClient(CFG.url,CFG.key):null;
+const ST={pending:'Chờ duyệt',approved:'Đã duyệt',rejected:'Từ chối'};
+const toMin=ts=>{if(!ts)return null;const d=new Date(ts);return d.getHours()*60+d.getMinutes()};
+const tmin=t=>{const[h,m]=t.split(':').map(Number);return h*60+m};
+let S=null,MGRS=new Set(),SHID={},CODE={};
+function chk(r){if(r.error)throw r.error;return r.data}
+async function load(){
+  const {data:{user}}=await sb.auth.getUser();
+  if(!user){S=null;return}
+  ME=user.id;
+  const me=chk(await sb.from('profiles').select('*').eq('id',ME).single());
+  const T=new Date(),from=dk(addD(T,-100)),to=dk(addD(T,42));
+  const q=[
+    sb.from('stores').select('*').eq('id',me.store_id).single(),
+    sb.from('profiles').select('*').order('created_at'),
+    sb.from('shift_templates').select('*').order('sort'),
+    sb.from('shift_assignments').select('work_date,shift_id,staff_id').gte('work_date',dk(addD(T,-21))).lte('work_date',to),
+    sb.from('attendance').select('*').gte('work_date',from).order('check_in'),
+    sb.from('requests').select('*').order('created_at',{ascending:false}).limit(300),
+    sb.from('posts').select('*').order('created_at',{ascending:false}).limit(100),
+    sb.from('post_reads').select('post_id,staff_id'),
+    sb.from('messages').select('*').order('created_at').limit(1000),
+    sb.from('raise_history').select('*').order('effective_on'),
+    sb.from('salary_advances').select('*').gte('request_date',from),
+    sb.from('salary_holds').select('*'),
+    sb.from('shift_registrations').select('*,registration_slots(work_date,shift_id)').gte('week_start',dk(addD(T,-14))),
+    sb.from('pay_periods').select('*')];
+  const [st,profs,tpl,asg,att,reqs,posts,reads,msgs,rh,adv,holds,regs,pp]=(await Promise.all(q)).map(chk);
+  SH={};SHID={};CODE={};
+  tpl.forEach(t=>{SH[t.code]={n:t.name,a:tmin(t.start_time),b:tmin(t.end_time),cap:t.capacity};SHID[t.code]=t.id;CODE[t.id]=t.code});
+  MGRS=new Set(profs.filter(p=>p.role==='manager').map(p=>p.id));
+  const sched={};asg.forEach(a=>{const c=CODE[a.shift_id];if(!c)return;day0(sched,a.work_date)[c].push(a.staff_id)});
+  S={role:me.role==='manager'?'ql':'nv',me,
+    set:{grace:st.grace_minutes,payDay:st.pay_start_day,payOut:st.pay_out_day,advMax:+st.advance_limit,store:st.name,join:st.join_code,
+      mgr:me.role==='manager'?me.full_name:(profs.find(p=>p.role==='manager')||{}).full_name||'Quản lý',
+      rs:{h:+st.raise_hours,step:st.raise_step,max:st.raise_max_rate,late:st.raise_max_late}},
+    emps:profs.filter(p=>p.role==='staff'&&p.active).map(p=>({id:p.id,n:p.full_name,p:p.position,rate:p.hourly_rate,ph:p.phone||'',lr:p.raise_cycle_start})),
+    sched,
+    logs:att.filter(a=>CODE[a.shift_id]).map(a=>({id:a.id,e:a.staff_id,d:a.work_date,c:CODE[a.shift_id],i:toMin(a.check_in),o:a.check_out?toMin(a.check_out):null,m:a.method,late:a.late_minutes})),
+    reqs:reqs.map(r=>({id:r.id,e:r.staff_id,t:r.type,d:r.for_date,note:r.note,st:ST[r.status]})),
+    posts:posts.map(p=>({id:p.id,title:p.title,body:p.body,pin:p.pinned,at:Date.parse(p.created_at),read:reads.filter(x=>x.post_id===p.id).map(x=>x.staff_id)})),
+    msgs:msgs.map(m=>({t:m.thread_staff_id||'all',f:MGRS.has(m.sender_id)?QL:m.sender_id,x:m.body,at:Date.parse(m.created_at)})),
+    raises:rh.map(r=>({e:r.staff_id,from:r.from_rate,to:r.to_rate,d:r.effective_on,why:r.reason,auto:r.is_auto})),
+    adv:adv.map(a=>({id:a.id,e:a.staff_id,amt:+a.amount,why:a.reason,d:a.request_date,st:ST[a.status]})),
+    holds:holds.map(h=>({id:h.id,e:h.staff_id,amt:+h.amount,why:h.reason,d:h.held_on,due:h.due_on,rd:h.released_on,st:h.released_on?'Đã trả lại':'Đang giữ'})),
+    regs:regs.map(r=>({id:r.id,e:r.staff_id,wk:r.week_start,note:r.note,st:ST[r.status],at:Date.parse(r.updated_at),
+      slots:r.registration_slots.filter(s=>CODE[s.shift_id]).map(s=>s.work_date+'|'+CODE[s.shift_id])})),
+    paid:Object.fromEntries(pp.map(p=>[p.start_date,p.status==='paid'?'Đã trả':'Đã chốt']))};
+}
+function day0(o,k){return o[k]||(o[k]=Object.fromEntries(Object.keys(SH).map(c=>[c,[]])))}
+const errMsg=e=>{const m=(e&&(e.message||e.error_description))||'Có lỗi xảy ra';
+  if(/row-level security|permission denied/i.test(m))return 'Bạn không có quyền thực hiện thao tác này';
+  if(/Invalid login/i.test(m))return 'Sai email hoặc mật khẩu';
+  if(/Failed to fetch|NetworkError/i.test(m))return 'Không kết nối được máy chủ, kiểm tra mạng';
+  return m};
+let busy=false;
+async function act(fn,ok){
+  if(busy)return;busy=true;
+  try{const r=await fn();if(r&&r.error)throw r.error;await load();if(ok)toast(typeof ok==='function'?ok(r&&r.data):ok)}
+  catch(e){toast(errMsg(e))}
+  finally{busy=false;render()}
+}
+let rt;
+function live(){if(!sb||rt)return;let tmr;
+  rt=sb.channel('minhtu').on('postgres_changes',{event:'*',schema:'public'},()=>{clearTimeout(tmr);tmr=setTimeout(async()=>{if(busy||!S)return;try{await load();render()}catch(e){}},400)}).subscribe()}
+const ui={day:tk(),per:0,form:false,reqf:'Chờ duyệt',resetArm:false};
+const isQL=()=>S&&S.role==='ql';
+const emp=id=>id===QL?{n:S.set.mgr,p:'Quản lý'}:(S.emps.find(e=>e.id===id)||{n:'(đã xoá)',rate:0,p:''});
+const hrs=l=>l.o==null?0:Math.max(0,l.o-l.i)/60;
+const lateBy=l=>l.late||0;
+const day=k=>day0(S.sched,k);
+const periods=()=>{const a=[periodOf(new Date())];for(let i=0;i<2;i++)a.push(periodOf(addD(pd(a[a.length-1].s),-1)));return a};
+const pStatus=p=>S.paid[p.s]||(p.e<tk()?'Chờ chốt':'Đang tính');
+const pTag=s=>s==='Đã trả'?'ok':s==='Đã chốt'?'':'w';
+const rateAt=(id,d)=>{let r=emp(id).rate;S.raises.filter(x=>x.e===id&&x.d>d).sort((a,b)=>b.d.localeCompare(a.d)).forEach(x=>r=x.from);return r};
+const sumP=(p,id)=>{const m=S.logs.filter(l=>l.e===id&&l.d>=p.s&&l.d<=p.e);const h=m.reduce((a,l)=>a+hrs(l),0);return{m,h,n:m.length,late:m.filter(lateBy).length,pay:m.reduce((a,l)=>a+hrs(l)*rateAt(id,l.d),0)}};
+const inP=(p,d)=>d&&d>=p.s&&d<=p.e;
+const slip=(p,id)=>{const s=sumP(p,id);
+  const adv=S.adv.filter(a=>a.e===id&&a.st==='Đã duyệt'&&inP(p,a.d)).reduce((x,a)=>x+a.amt,0);
+  const hold=S.holds.filter(h=>h.e===id&&inP(p,h.d)).reduce((x,h)=>x+h.amt,0);
+  const rel=S.holds.filter(h=>h.e===id&&h.st==='Đã trả lại'&&inP(p,h.rd)).reduce((x,h)=>x+h.amt,0);
+  return{...s,adv,hold,rel,net:s.pay-adv-hold+rel}};
+const payDate=p=>{const e=pd(p.e);return dk(new Date(e.getFullYear(),e.getMonth()+(S.set.payOut<=e.getDate()?1:0),S.set.payOut))};
+const since=e=>{const m=S.logs.filter(l=>l.e===e.id&&l.d>=e.lr&&l.o!=null);return{h:m.reduce((a,l)=>a+hrs(l),0),late:m.filter(lateBy).length}};
+const advUsed=id=>{const p=periods()[0];return S.adv.filter(a=>a.e===id&&a.st!=='Từ chối'&&inP(p,a.d)).reduce((x,a)=>x+a.amt,0)};
+const nextMon=n=>{const t=new Date();t.setHours(0,0,0,0);return dk(addD(t,7*n-((t.getDay()+6)%7)))};
+const pending=()=>S.reqs.filter(r=>r.st==='Chờ duyệt').length;
+const pAdv=()=>S.adv.filter(r=>r.st==='Chờ duyệt').length,pReg=()=>S.regs.filter(r=>r.st==='Chờ duyệt').length;
+const unreadPosts=()=>S.posts.filter(p=>!p.read.includes(ME)).length;
+const when=t=>{const d=new Date(t),k=dk(d);return(k===tk()?'':dm(k)+' ')+pad(d.getHours())+':'+pad(d.getMinutes())};
+const toastEl=document.getElementById('toast');let tt;
+const toast=m=>{toastEl.textContent=m;toastEl.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>toastEl.classList.remove('show'),2600)};
+
+const IC={
+home:'<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
+tasks:'<rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/>',
+msg:'<path d="M4 4h16a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H9l-5 4V5a1 1 0 0 1 1-1z"/>',
+acc:'<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4.5 4.5-7 8-7s7 2.5 8 7"/>',
+cal:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+req:'<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/>',
+pay:'<rect x="2" y="6" width="20" height="13" rx="2"/><circle cx="12" cy="12.5" r="3"/><path d="M6 9.5v.01M18 15.5v.01"/>',
+news:'<path d="M4 5h13v14a2 2 0 0 0 2 2H6a2 2 0 0 1-2-2z"/><path d="M17 9h3v10a2 2 0 0 1-2 2M8 9h5M8 13h5M8 17h3"/>',
+team:'<circle cx="9" cy="8" r="3.5"/><path d="M2 20c.8-3.5 3.5-5.5 7-5.5s6.2 2 7 5.5"/><circle cx="17" cy="9" r="2.6"/><path d="M17.5 14.5c2.2.4 3.8 2 4.5 4.5"/>'};
+const ico=k=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[k]}</svg>`;
+IC.reg='<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M9 15l2 2 4-4"/>';
+IC.adv='<path d="M12 3v18M16.5 7.5C16 6 14.3 5 12 5c-2.8 0-4.5 1.3-4.5 3.2 0 4.3 9 2.2 9 6.6 0 2-1.8 3.2-4.5 3.2-2.4 0-4.2-1.1-4.7-2.7"/>';
+IC.lock='<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>';
+IC.up='<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>';
+IC.hist='<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/>';
+IC.slip='<path d="M6 2h12v20l-3-2-3 2-3-2-3 2z"/><path d="M9 7h6M9 11h6M9 15h4"/>';
+const SUB={lichchung:'lichchung',dangky:'dangky',tamung:'tamung',luonggiu:'luonggiu',tangluong:'tangluong',lichsutang:'lichsutang',phieuluong:'phieuluong',yeucau:'yeucau',kyluong:'kyluong',bangtin:'bangtin',nhanvien:'nhanvien',lich:'lichchung'};
+
+function hdr(title,sub,back){
+  return`<div class="hdr"><div class="brand"><span>${esc(S.set.store)}</span><span class="badge-role">${isQL()?'Quản lý':'Nhân viên'}</span></div>
+  ${back?`<a class="back" href="#${back[0]}">‹ ${back[1]}</a>`:''}<h1>${title}</h1>${sub?`<div class="sub">${sub}</div>`:''}</div>`;
+}
+
+/* ---------- TRANG CHỦ ---------- */
+function vHome(){
+  const T=tk(),nm=nowMin(),cur=periods()[0];
+  const posts=S.posts.slice().sort((a,b)=>b.pin-a.pin||b.at-a.at).slice(0,2);
+  const postH=posts.map(p=>`<a class="item post${p.pin?' pin':''}" href="#bangtin" style="text-decoration:none;color:inherit"><div class="r"><b>${esc(p.title)}</b>${p.pin?'<span class="tag w">Ghim</span>':''}</div><div class="small muted">${when(p.at)}</div></a>`).join('');
+  if(isQL()){
+    const d=day(T),tl=S.logs.filter(l=>l.d===T);
+    const present=tl.filter(l=>l.o==null).length,late=tl.filter(lateBy).length;
+    const tot=S.emps.reduce((a,e)=>a+sumP(cur,e.id).pay,0);
+    const rows=c=>d[c].map(id=>{const l=tl.find(x=>x.e===id&&x.c===c);let st;
+      if(l&&l.o==null)st=`<span class="tag ok">Đang làm · ${hm(l.i)}</span>`;
+      else if(l)st=`<span class="tag">${hm(l.i)}–${hm(l.o)}</span>`;
+      else if(nm>SH[c].a+S.set.grace&&nm<SH[c].b)st='<span class="tag no">Chưa chấm công</span>';
+      else if(nm>=SH[c].b)st='<span class="tag no">Vắng</span>';
+      else st='<span class="tag">Sắp tới</span>';
+      return`<div class="who"><span>${esc(short(emp(id).n))}${l&&lateBy(l)?` <span class="tag w">muộn ${lateBy(l)}′</span>`:''}</span>${st}</div>`}).join('')||'<p class="muted small">Chưa xếp ai</p>';
+    return hdr(`Chào chị ${esc(S.set.mgr.split(' ').pop())}`,dl(T)+' · tổng quan cửa hàng')+`<div class="pad">
+      <div class="stats"><div class="stat"><div class="l">Đang có mặt</div><div class="big-n">${present}</div></div>
+      <div class="stat"><div class="l">Đi muộn</div><div class="big-n">${late}</div></div>
+      <a class="stat" href="#yeucau" style="text-decoration:none;color:inherit"><div class="l">Chờ duyệt</div><div class="big-n" style="color:var(--red)">${pending()}</div></a></div>
+      <div class="sec"><div class="sec-h"><h2 style="margin:0">Ca hôm nay</h2><a href="#lich">Xếp ca</a></div><div class="card">
+      ${Object.keys(SH).map(c=>`<h3 class="small muted" style="margin-top:8px">${SH[c].n} ${hm(SH[c].a)}–${hm(SH[c].b)}</h3>${rows(c)}`).join('')}</div></div>
+      <div class="sec"><div class="sec-h"><h2 style="margin:0">Kỳ lương hiện tại</h2><a href="#kyluong">Chi tiết</a></div>
+      <div class="card"><div class="small muted">${dm(cur.s)} – ${dm(cur.e)} · ${pStatus(cur)}</div><div class="money">${money(tot)}</div><div class="small muted">Quỹ lương tạm tính đến hôm nay</div></div></div>
+      <div class="sec"><div class="sec-h"><h2 style="margin:0">Bảng tin</h2><a href="#bangtin">Đăng tin</a></div><div class="list">${postH}</div></div></div>`;
+  }
+  const mine=Object.keys(SH).filter(c=>day(T)[c].includes(ME));
+  const open=S.logs.find(l=>l.e===ME&&l.d===T&&l.o==null);
+  const target=open?open.c:mine.find(c=>SH[c].b>nm&&!S.logs.some(l=>l.e===ME&&l.d===T&&l.c===c));
+  const line=target?`${SH[target].n} · ${hm(SH[target].a)}–${hm(SH[target].b)}`:mine.length?'Bạn đã xong ca hôm nay':'Hôm nay bạn không có ca';
+  const up=[];for(let i=1;i<21&&up.length<3;i++){const k=dk(addD(new Date(),i));for(const c in SH)if(day(k)[c].includes(ME)&&up.length<3)up.push([k,c])}
+  const cp=sumP(cur,ME);
+  return hdr(`Chào ${esc(emp(ME).n.split(' ').pop())}`,`${esc(emp(ME).p)} · ${dl(T)}`)+`<div class="pad" style="padding-top:0">
+    <div class="card punch" style="margin-top:0;position:relative;top:-0px">
+      <div class="clock" id="clock">--:--:--</div>
+      <div>${line}</div>
+      <div class="pills" role="radiogroup" aria-label="Cách chấm công">
+        <label><input type="radio" name="m" value="QR tại quầy" checked> Quét QR tại quầy</label>
+        <label><input type="radio" name="m" value="Wi-Fi cửa hàng"> Wi-Fi cửa hàng</label></div>
+      <button class="btn big${open?' gold':''}" data-act="punch" ${target?'':'disabled'}>${open?'Kết thúc ca':'Vào ca'}</button>
+      <div class="small" style="margin-top:10px;min-height:22px">${open?`Đã vào lúc <span class="stamp${lateBy(open)?' late':''}">${hm(open.i)}</span>${lateBy(open)?` · muộn ${lateBy(open)} phút`:' · đúng giờ'}`:''}</div>
+    </div>
+    <div class="sec"><div class="sec-h"><h2 style="margin:0">Kỳ lương ${dm(cur.s)} – ${dm(cur.e)}</h2><a href="#kyluong">Chi tiết</a></div>
+      <div class="stats"><div class="stat"><div class="l">Số ca</div><div class="big-n">${cp.n}</div></div><div class="stat"><div class="l">Giờ công</div><div class="big-n">${cp.h.toFixed(1)}</div></div><div class="stat"><div class="l">Tạm tính</div><div class="big-n" style="font-size:17px">${money(cp.pay)}</div></div></div></div>
+    <div class="sec"><div class="sec-h"><h2 style="margin:0">Ca sắp tới</h2><a href="#lich">Lịch</a></div><div class="card">
+      ${up.map(([k,c])=>`<div class="who"><b>${dl(k)}</b><span>${SH[c].n} · ${hm(SH[c].a)}–${hm(SH[c].b)}</span></div>`).join('')||'<p class="muted">Chưa có ca nào.</p>'}</div></div>
+    <div class="sec"><div class="sec-h"><h2 style="margin:0">Bảng tin</h2><a href="#bangtin">Xem tất cả</a></div><div class="list">${postH}</div></div></div>`;
+}
+
+/* ---------- TÁC VỤ ---------- */
+function vTasks(){
+  const cur=periods()[0],q=isQL();
+  const myReg=S.regs.find(r=>r.e===ME&&r.wk===nextMon(1));
+  const held=S.holds.filter(h=>(q||h.e===ME)&&h.st==='Đang giữ').reduce((a,h)=>a+h.amt,0);
+  const me=emp(ME),sm=since(me);
+  const G=[['Lịch làm việc',[
+      ['lichchung','cal','Lịch làm việc chung',q?'Xếp ca theo ngày':'Ca của cả cửa hàng'],
+      ['dangky','reg','Đăng ký lịch làm việc',q?`${pReg()} đăng ký chờ duyệt`:myReg?`Tuần sau: ${myReg.st.toLowerCase()}`:'Chưa đăng ký tuần sau',q?pReg():0]]],
+    ['Lương',[
+      ...(q?[['kyluong','pay','Kỳ lương',`Chốt & trả kỳ ${dm(cur.s)} – ${dm(cur.e)}`]]:[]),
+      ['tamung','adv','Tạm ứng lương',q?`${pAdv()} đơn chờ duyệt`:`Còn ứng được ${money(Math.max(0,S.set.advMax-advUsed(ME)))}`,q?pAdv():0],
+      ['luonggiu','lock','Lương đang giữ',money(held)],
+      ['tangluong','up','Tiến trình tự động tăng lương',q?'Quy tắc & tiến độ':`${Math.floor(sm.h)}/${S.set.rs.h} giờ công`],
+      ['lichsutang','hist','Lịch sử tự động tăng lương',`${S.raises.filter(r=>q||r.e===ME).length} lần tăng`],
+      ['phieuluong','slip','Phiếu lương',`Kỳ ${dm(cur.s)} – ${dm(cur.e)}`]]],
+    ['Khác',[
+      ['yeucau','req','Yêu cầu',q?`${pending()} đơn chờ duyệt`:'Nghỉ phép, đổi ca…',q?pending():0],
+      ['bangtin','news','Bảng tin',q?'Đăng thông báo':`${unreadPosts()} tin chưa đọc`,q?0:unreadPosts()],
+      ...(q?[['nhanvien','team','Nhân viên',`${S.emps.length} người`]]:[])]]];
+  return hdr('Tác vụ',q?'Quản lý cửa hàng':'Công việc của bạn')+`<div class="pad">${G.map(([g,t],i)=>`<h2${i?' class="sec"':''}>${g}</h2><div class="tiles">
+    ${t.map(([h,ic,n,s,c])=>`<a class="tile" href="#${h}">${ico(ic)}<b>${n}</b><span>${s}</span>${c?`<em class="cnt">${c}</em>`:''}</a>`).join('')}</div>`).join('')}</div>`;
+}
+
+function vLich(){
+  const T=tk(),t0=new Date();t0.setHours(0,0,0,0);
+  const mon=addD(t0,-((t0.getDay()+6)%7));
+  const days=[...Array(21)].map((_,i)=>dk(addD(mon,i)));
+  if(!days.includes(ui.day))ui.day=T;
+  const has=k=>Object.keys(SH).some(c=>day(k)[c].includes(ME));
+  const strip=days.map(k=>`<button class="day${k===ui.day?' on':''}${k===T?' today':''}${!isQL()&&has(k)?' mine':''}" data-act="pick" data-k="${k}"><small>${DN[pd(k).getDay()]}</small><b>${k.slice(8)}</b><small>Th${+k.slice(5,7)}</small></button>`).join('');
+  const k=ui.day,past=k<T;
+  const cards=Object.keys(SH).map(c=>{const list=day(k)[c];
+    let h=list.map(id=>`<span class="chip${!isQL()&&id===ME?' me':''}">${esc(short(emp(id).n))}${isQL()&&!past?`<button data-act="rm" data-c="${c}" data-id="${id}" aria-label="Bỏ ${esc(emp(id).n)} khỏi ca">×</button>`:''}</span>`).join('')||'<span class="muted small">Chưa có ai</span>';
+    let act='';
+    if(!past){
+      if(isQL()){const o=S.emps.filter(e=>!list.includes(e.id));if(o.length)act=`<select data-act="add" data-c="${c}" aria-label="Thêm người vào ${SH[c].n}"><option value="">+ Thêm nhân viên vào ca</option>${o.map(e=>`<option value="${e.id}">${esc(e.n)}</option>`).join('')}</select>`}
+    }
+    return`<div class="item"><div class="r"><b>${SH[c].n}</b><span class="small muted">${hm(SH[c].a)} – ${hm(SH[c].b)} · ${list.length}/3</span></div><div>${h}</div>${act?`<div>${act}</div>`:''}</div>`}).join('');
+  return hdr('Lịch làm việc chung',isQL()?'Chọn ngày rồi xếp người vào từng ca':'Ca của cả cửa hàng · chấm vàng là ngày bạn có ca',['tasks','Tác vụ'])+`<div class="pad">${isQL()?'':'<a class="btn alt" href="#dangky" style="display:flex;justify-content:center;align-items:center;text-decoration:none;margin-bottom:14px">Đăng ký lịch làm việc tuần sau</a>'}
+    <div class="days">${strip}</div><h2 class="sec" style="margin-top:14px">${dl(k)}${k===T?' · hôm nay':''}</h2><div class="list">${cards}</div></div>`;
+}
+
+function vYeuCau(){
+  const tc=s=>s==='Đã duyệt'?'ok':s==='Từ chối'?'no':'w';
+  let rs=(isQL()?S.reqs:S.reqs.filter(r=>r.e===ME)).slice().sort((a,b)=>b.d.localeCompare(a.d));
+  if(isQL()&&ui.reqf!=='Tất cả')rs=rs.filter(r=>r.st===ui.reqf);
+  const list=rs.map(r=>`<div class="item"><div class="r"><b>${esc(r.t)} · ${dl(r.d)}</b><span class="tag ${tc(r.st)}">${r.st}</span></div>
+    ${isQL()?`<div class="small muted">${esc(emp(r.e).n)}</div>`:''}<div>${esc(r.note)||'<span class="muted">Không ghi chú</span>'}</div>
+    ${isQL()&&r.st==='Chờ duyệt'?`<div class="acts"><button class="btn sm" data-act="ok" data-id="${r.id}">Duyệt</button><button class="btn alt sm" data-act="no" data-id="${r.id}">Từ chối</button></div>`:''}</div>`).join('')||'<p class="empty">Không có yêu cầu nào.</p>';
+  if(isQL())return hdr('Yêu cầu','Duyệt đơn của nhân viên',['tasks','Tác vụ'])+`<div class="pad"><div class="seg">${['Chờ duyệt','Đã duyệt','Từ chối','Tất cả'].map(f=>`<button class="${f===ui.reqf?'on':''}" data-act="rf" data-f="${f}">${f}</button>`).join('')}</div><div class="list">${list}</div></div>`;
+  return hdr('Yêu cầu','Gửi đơn cho quản lý duyệt',['tasks','Tác vụ'])+`<div class="pad">
+    ${ui.form?`<form class="card" id="reqf" style="margin-bottom:18px"><h2>Tạo yêu cầu</h2>
+      <div class="f"><label class="t" for="rt">Loại yêu cầu</label><select id="rt"><option>Nghỉ phép</option><option>Đổi ca</option><option>Đi muộn</option><option>Về sớm</option><option>Bổ sung công</option></select></div>
+      <div class="f"><label class="t" for="rd">Ngày</label><input type="date" id="rd" value="${tk()}" required></div>
+      <div class="f"><label class="t" for="rn">Lý do</label><textarea id="rn" rows="3" placeholder="Ví dụ: đổi ca tối với Trúc"></textarea></div>
+      <div class="acts"><button class="btn">Gửi yêu cầu</button><button type="button" class="btn alt" data-act="form">Huỷ</button></div></form>`
+    :`<button class="btn big" data-act="form" style="margin-bottom:18px">+ Tạo yêu cầu mới</button>`}
+    <div class="list">${list}</div></div>`;
+}
+
+function vKyLuong(){
+  if(!isQL())return vPhieuLuong();
+  const ps=periods(),p=ps[ui.per]||ps[0],st=pStatus(p);
+  const seg=`<div class="seg">${ps.map((x,i)=>`<button class="${i===ui.per?'on':''}" data-act="per" data-i="${i}">${dm(x.s)} – ${dm(x.e)}</button>`).join('')}</div>`;
+  if(!isQL()){
+    const s=sumP(p,ME);
+    return hdr('Kỳ lương',`Từ ngày ${S.set.payDay} đến ngày ${S.set.payDay===1?'cuối tháng':S.set.payDay-1+' tháng sau'} · trả lương ngày ${S.set.payOut}`,['tasks','Tác vụ'])+`<div class="pad">${seg}
+      <div class="card"><div class="r" style="display:flex;justify-content:space-between;gap:8px"><span class="small muted">${dl(p.s)} – ${dl(p.e)}</span><span class="tag ${pTag(st)}">${st}</span></div>
+      <div class="money" style="margin:6px 0">${money(s.pay)}</div><div class="small muted">${s.h.toFixed(1)} giờ × ${money(emp(ME).rate)}/giờ</div></div>
+      <div class="stats sec"><div class="stat"><div class="l">Số ca</div><div class="big-n">${s.n}</div></div><div class="stat"><div class="l">Giờ công</div><div class="big-n">${s.h.toFixed(1)}</div></div><div class="stat"><div class="l">Đi muộn</div><div class="big-n">${s.late}</div></div></div>
+      <div class="sec"><h2>Chi tiết từng ca</h2><table><thead><tr><th>Ngày</th><th>Ca</th><th>Vào</th><th>Ra</th><th class="num">Giờ</th></tr></thead><tbody>
+      ${s.m.slice().sort((a,b)=>b.d.localeCompare(a.d)).map(l=>`<tr><td>${dl(l.d)}</td><td>${SH[l.c].n.replace('Ca ','')}</td><td><span class="stamp${lateBy(l)?' late':''}">${hm(l.i)}</span></td><td>${l.o==null?'<span class="stamp open">đang</span>':hm(l.o)}</td><td class="num">${hrs(l).toFixed(1)}</td></tr>`).join('')||'<tr><td colspan="5" class="muted">Chưa có ca nào trong kỳ.</td></tr>'}
+      </tbody></table><p class="note">Dấu đỏ: vào muộn quá ${S.set.grace} phút. Thấy sai giờ? Gửi “Bổ sung công” ở mục Yêu cầu.</p></div></div>`;
+  }
+  const rows=S.emps.map(e=>({e,...slip(p,e.id)})),tot=rows.reduce((a,r)=>a+r.net,0),th=rows.reduce((a,r)=>a+r.h,0);
+  const next=st==='Chờ chốt'||st==='Đang tính'?['chot','Chốt kỳ lương']:st==='Đã chốt'?['tra','Đánh dấu đã trả lương']:null;
+  return hdr('Kỳ lương','Tổng hợp công và lương theo kỳ',['tasks','Tác vụ'])+`<div class="pad">
+    <div class="f"><label class="t" for="payday">Kỳ lương bắt đầu từ ngày</label><select id="payday">${[...Array(28)].map((_,i)=>`<option value="${i+1}"${i+1===S.set.payDay?' selected':''}>Ngày ${i+1}${i===0?' (theo tháng)':''}</option>`).join('')}</select></div>
+    ${seg}
+    <div class="card"><div style="display:flex;justify-content:space-between;gap:8px"><span class="small muted">${dl(p.s)} – ${dl(p.e)} · ${th.toFixed(0)} giờ</span><span class="tag ${pTag(st)}">${st}</span></div>
+    <div class="money" style="margin:6px 0">${money(tot)}</div><div class="small muted">Tổng thực nhận · trả ngày ${dm(payDate(p))}</div>
+    <div class="acts" style="margin-top:12px">${next?`<button class="btn sm" data-act="${next[0]}">${next[1]}</button>`:''}<button class="btn alt sm" data-act="csv">Sao chép CSV</button></div></div>
+    <div class="sec"><table><thead><tr><th>Nhân viên</th><th class="num">Ca</th><th class="num">Giờ</th><th class="num">Muộn</th><th class="num">Thực nhận</th></tr></thead><tbody>
+    ${rows.map(r=>`<tr><td><a href="#phieuluong" data-act="slipe" data-id="${r.e.id}" style="color:inherit">${esc(short(r.e.n))}</a></td><td class="num">${r.n}</td><td class="num">${r.h.toFixed(1)}</td><td class="num">${r.late}</td><td class="num"><b>${Math.round(r.net/1000).toLocaleString('vi-VN')}k</b></td></tr>`).join('')}
+    </tbody></table><p class="note">Thực nhận = giờ công × đơn giá − tạm ứng − lương giữ + lương giữ được trả lại. Bấm tên để xem phiếu lương.</p></div></div>`;
+}
+
+/* ---------- LƯƠNG ---------- */
+function vPhieuLuong(){
+  const ps=periods(),p=ps[ui.per]||ps[0],st=pStatus(p),id=isQL()?(ui.slipE||S.emps[0].id):ME,e=emp(id),s=slip(p,id);
+  const seg=`<div class="seg">${ps.map((x,i)=>`<button class="${i===ui.per?'on':''}" data-act="per" data-i="${i}">${dm(x.s)} – ${dm(x.e)}</button>`).join('')}</div>`;
+  const rates=[...new Set(s.m.map(l=>rateAt(id,l.d)))];
+  const L=[['Giờ công',`${s.h.toFixed(1)} giờ · ${s.n} ca`],['Đơn giá',rates.length>1?rates.map(money).join(' → '):money(rates[0]||e.rate)+'/giờ'],
+    ['Lương theo giờ công',money(s.pay)],['Tạm ứng trong kỳ',s.adv?'− '+money(s.adv):'0 đ'],['Giữ lương trong kỳ',s.hold?'− '+money(s.hold):'0 đ'],['Trả lại lương giữ',s.rel?'+ '+money(s.rel):'0 đ']];
+  return hdr('Phiếu lương',`Kỳ lương từ ngày ${S.set.payDay} · trả lương ngày ${S.set.payOut}`,['tasks','Tác vụ'])+`<div class="pad">
+    ${isQL()?`<div class="f"><label class="t" for="slipe">Nhân viên</label><select id="slipe">${S.emps.map(x=>`<option value="${x.id}"${x.id===id?' selected':''}>${esc(x.n)}</option>`).join('')}</select></div>`:''}${seg}
+    <div class="card" style="border-top:8px solid var(--cloth)"><div style="display:flex;justify-content:space-between;gap:8px;align-items:start"><div><div class="brand" style="color:var(--acc);margin:0">${esc(S.set.store)}</div><b>${esc(e.n)}</b><div class="small muted">${esc(e.p)} · ${dl(p.s)} – ${dl(p.e)}</div></div><span class="tag ${pTag(st)}">${st}</span></div>
+    <table style="margin-top:12px"><tbody>${L.map(([a,b])=>`<tr><td>${a}</td><td class="num">${b}</td></tr>`).join('')}</tbody></table>
+    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-top:14px"><b>Thực nhận</b><span class="money">${money(s.net)}</span></div>
+    <div class="small muted">Ngày trả dự kiến: ${dl(payDate(p))}</div></div>
+    <div class="sec"><h2>Chi tiết từng ca</h2><table><thead><tr><th>Ngày</th><th>Ca</th><th>Vào</th><th>Ra</th><th class="num">Giờ</th></tr></thead><tbody>
+    ${s.m.slice().sort((a,b)=>b.d.localeCompare(a.d)).map(l=>`<tr><td>${dl(l.d)}</td><td>${SH[l.c].n.replace('Ca ','')}</td><td><span class="stamp${lateBy(l)?' late':''}">${hm(l.i)}</span></td><td>${l.o==null?'<span class="stamp open">đang</span>':hm(l.o)}</td><td class="num">${hrs(l).toFixed(1)}</td></tr>`).join('')||'<tr><td colspan="5" class="muted">Chưa có ca nào trong kỳ.</td></tr>'}
+    </tbody></table><p class="note">Dấu đỏ: vào muộn quá ${S.set.grace} phút. Thấy sai giờ? Gửi “Bổ sung công” ở mục Yêu cầu.</p></div></div>`;
+}
+
+function vTamUng(){
+  const tc=s=>s==='Đã duyệt'?'ok':s==='Từ chối'?'no':'w',cur=periods()[0];
+  const rs=(isQL()?S.adv:S.adv.filter(a=>a.e===ME)).slice().sort((a,b)=>(a.st==='Chờ duyệt'?0:1)-(b.st==='Chờ duyệt'?0:1)||b.d.localeCompare(a.d));
+  const list=rs.map(a=>`<div class="item"><div class="r"><b>${money(a.amt)}</b><span class="tag ${tc(a.st)}">${a.st}</span></div>
+    <div class="small muted">${isQL()?esc(emp(a.e).n)+' · ':''}${dl(a.d)}</div><div>${esc(a.why)||'<span class="muted">Không ghi lý do</span>'}</div>
+    ${isQL()&&a.st==='Chờ duyệt'?`<div class="acts"><button class="btn sm" data-act="aok" data-id="${a.id}">Duyệt</button><button class="btn alt sm" data-act="ano" data-id="${a.id}">Từ chối</button></div>`:''}</div>`).join('')||'<p class="empty">Chưa có khoản tạm ứng nào.</p>';
+  if(isQL())return hdr('Tạm ứng lương','Duyệt đơn tạm ứng của nhân viên',['tasks','Tác vụ'])+`<div class="pad">
+    <div class="card" style="margin-bottom:16px"><div class="f" style="margin:0"><label class="t" for="advmax">Hạn mức tạm ứng mỗi kỳ (đ)</label><input id="advmax" type="number" step="100000" value="${S.set.advMax}"></div></div><div class="list">${list}</div></div>`;
+  const left=Math.max(0,S.set.advMax-advUsed(ME));
+  return hdr('Tạm ứng lương',`Kỳ ${dm(cur.s)} – ${dm(cur.e)}`,['tasks','Tác vụ'])+`<div class="pad">
+    <div class="card"><div class="small muted">Bạn còn có thể ứng trong kỳ này</div><div class="money">${money(left)}</div><div class="small muted">Hạn mức ${money(S.set.advMax)}/kỳ · đã ứng hoặc đang chờ ${money(advUsed(ME))}</div></div>
+    <form class="card sec" id="advf"><h2>Gửi đơn tạm ứng</h2>
+      <div class="f"><label class="t" for="aa">Số tiền (đ)</label><input id="aa" type="number" step="50000" min="50000" max="${left}" placeholder="Ví dụ 500000" required></div>
+      <div class="f"><label class="t" for="aw">Lý do</label><input id="aw" placeholder="Ví dụ: đóng học phí"></div>
+      <button class="btn" ${left?'':'disabled'}>Gửi đơn</button></form>
+    <div class="sec"><h2>Đơn của bạn</h2><div class="list">${list}</div></div>
+    <p class="note">Khoản đã duyệt được trừ vào phiếu lương của kỳ đó.</p></div>`;
+}
+
+function vLuongGiu(){
+  const hs=(isQL()?S.holds:S.holds.filter(h=>h.e===ME)).slice().sort((a,b)=>(a.st==='Đang giữ'?0:1)-(b.st==='Đang giữ'?0:1)||b.d.localeCompare(a.d));
+  const tot=hs.filter(h=>h.st==='Đang giữ').reduce((a,h)=>a+h.amt,0);
+  const list=hs.map(h=>`<div class="item"><div class="r"><b>${money(h.amt)}</b><span class="tag ${h.st==='Đang giữ'?'w':'ok'}">${h.st}</span></div>
+    ${isQL()?`<div class="small muted">${esc(emp(h.e).n)}</div>`:''}<div>${esc(h.why)}</div>
+    <div class="small muted">Giữ từ ${dl(h.d)} · ${h.st==='Đang giữ'?'dự kiến trả '+dl(h.due):'đã trả lại '+dl(h.rd)}</div>
+    ${isQL()&&h.st==='Đang giữ'?`<div class="acts"><button class="btn sm" data-act="rel" data-id="${h.id}">Trả lại vào kỳ này</button></div>`:''}</div>`).join('')||'<p class="empty">Không có khoản lương nào đang giữ.</p>';
+  return hdr('Lương đang giữ',isQL()?'Các khoản giữ lại của nhân viên':'Khoản lương cửa hàng đang giữ của bạn',['tasks','Tác vụ'])+`<div class="pad">
+    <div class="card"><div class="small muted">Tổng đang giữ</div><div class="money">${money(tot)}</div></div>
+    ${isQL()?`<form class="card sec" id="holdf"><h2>Thêm khoản giữ lương</h2>
+      <div class="f"><label class="t" for="he">Nhân viên</label><select id="he">${S.emps.map(e=>`<option value="${e.id}">${esc(e.n)}</option>`).join('')}</select></div>
+      <div class="f"><label class="t" for="ha">Số tiền (đ)</label><input id="ha" type="number" step="50000" min="1000" required></div>
+      <div class="f"><label class="t" for="hw">Lý do</label><input id="hw" required placeholder="Ví dụ: giữ 10% lương thử việc"></div>
+      <div class="f"><label class="t" for="hd">Dự kiến trả lại</label><input id="hd" type="date" value="${dk(addD(new Date(),30))}" required></div>
+      <button class="btn">Giữ lương</button></form>`:''}
+    <div class="sec list">${list}</div><p class="note">Khoản giữ bị trừ vào phiếu lương của kỳ bắt đầu giữ; khi trả lại sẽ được cộng vào phiếu lương của kỳ trả.</p></div>`;
+}
+
+function vTangLuong(){
+  const R=S.set.rs;
+  const prog=e=>{const s=since(e),pc=Math.min(100,s.h/R.h*100),bad=s.late>R.late,top=e.rate>=R.max;return{s,pc,bad,top}};
+  const rule=`Cứ đủ <b>${R.h} giờ công</b> kể từ lần tăng gần nhất và đi muộn không quá <b>${R.late} lần</b>, đơn giá tự tăng <b>${money(R.step)}/giờ</b>, tối đa ${money(R.max)}/giờ.`;
+  if(!isQL()){const e=emp(ME),{s,pc,bad,top}=prog(e);
+    return hdr('Tiến trình tự động tăng lương','Tăng tự động khi đủ điều kiện',['tasks','Tác vụ'])+`<div class="pad">
+      <div class="card"><div class="small muted">Đơn giá hiện tại</div><div class="money">${money(e.rate)}<span class="small muted" style="font-family:inherit;font-weight:400">/giờ</span></div>
+      ${top?'<p class="small">Bạn đã đạt đơn giá tối đa.</p>':`<div class="small muted">Lần tăng tới: ${money(Math.min(R.max,e.rate+R.step))}/giờ</div>`}</div>
+      <div class="card sec"><div class="r" style="display:flex;justify-content:space-between"><b>Giờ công tích luỹ</b><span class="num">${s.h.toFixed(1)} / ${R.h}</span></div>
+      <div class="bar" style="height:12px;background:var(--soft);border-radius:6px;margin:10px 0"><i style="display:block;height:100%;width:${pc.toFixed(0)}%;background:var(--gold);border-radius:6px"></i></div>
+      <div class="small muted">Còn ${Math.max(0,R.h-s.h).toFixed(1)} giờ công · tính từ ${dl(e.lr)}</div>
+      <div class="r" style="display:flex;justify-content:space-between;margin-top:14px"><b>Số lần đi muộn</b><span class="num${bad?'" style="color:var(--red)':''}">${s.late} / ${R.late}</span></div>
+      ${bad?'<p class="small" style="color:var(--red)">Đã vượt số lần đi muộn: chu kỳ này sẽ không được tăng. Chu kỳ mới bắt đầu khi quản lý đặt lại.</p>':''}</div>
+      <p class="note">${rule}</p></div>`;}
+  return hdr('Tiến trình tự động tăng lương','Quy tắc và tiến độ của từng nhân viên',['tasks','Tác vụ'])+`<div class="pad">
+    <div class="card"><h2>Quy tắc</h2>
+      <div class="f"><label class="t" for="rh">Số giờ công mỗi lần tăng</label><input id="rh" type="number" min="10" step="10" value="${R.h}"></div>
+      <div class="f"><label class="t" for="rst">Mức tăng (đ/giờ)</label><input id="rst" type="number" min="0" step="500" value="${R.step}"></div>
+      <div class="f"><label class="t" for="rmx">Đơn giá tối đa (đ/giờ)</label><input id="rmx" type="number" step="1000" value="${R.max}"></div>
+      <div class="f" style="margin:0"><label class="t" for="rlt">Số lần đi muộn tối đa mỗi chu kỳ</label><input id="rlt" type="number" min="0" value="${R.late}"></div></div>
+    <div class="sec list">${S.emps.map(e=>{const{s,pc,bad,top}=prog(e);return`<div class="item"><div class="r"><b>${esc(e.n)}</b><span class="small">${money(e.rate)}/giờ</span></div>
+      <div class="bar" style="height:10px;background:var(--soft);border-radius:5px"><i style="display:block;height:100%;width:${pc.toFixed(0)}%;background:${bad?'var(--red)':'var(--gold)'};border-radius:5px"></i></div>
+      <div class="r small muted"><span>${s.h.toFixed(0)}/${R.h} giờ · muộn ${s.late}/${R.late}</span>${top?'<span class="tag">Tối đa</span>':bad?`<button class="btn alt sm" data-act="rcyc" data-id="${e.id}">Bắt đầu chu kỳ mới</button>`:''}</div></div>`}).join('')}</div>
+    <p class="note">Hệ thống tự kiểm tra mỗi khi mở app và tăng đơn giá ngay khi đủ điều kiện.</p></div>`;
+}
+
+function vLichSuTang(){
+  const rs=S.raises.filter(r=>isQL()||r.e===ME).slice().sort((a,b)=>b.d.localeCompare(a.d));
+  return hdr('Lịch sử tự động tăng lương',isQL()?'Tất cả nhân viên':'Các lần tăng đơn giá của bạn',['tasks','Tác vụ'])+`<div class="pad"><div class="list">
+    ${rs.map(r=>`<div class="item"><div class="r"><b>${money(r.from)} → ${money(r.to)}</b><span class="tag ok">+${money(r.to-r.from)}</span></div>
+    <div class="small muted">${isQL()?esc(emp(r.e).n)+' · ':''}${dl(r.d)}/${r.d.slice(0,4)} · ${r.auto?'Tự động':'Quản lý điều chỉnh'}</div><div class="small">${esc(r.why)}</div></div>`).join('')||'<p class="empty">Chưa có lần tăng lương nào.</p>'}</div></div>`;
+}
+
+function vDangKy(){
+  const tc=s=>s==='Đã duyệt'?'ok':s==='Từ chối'?'no':'w';
+  const wks=[nextMon(1),nextMon(2)];if(!wks.includes(ui.wk))ui.wk=wks[0];
+  const seg=`<div class="seg">${wks.map((w,i)=>`<button class="${w===ui.wk?'on':''}" data-act="wkp" data-w="${w}">${i?'Tuần sau nữa':'Tuần sau'} · ${dm(w)}–${dm(dk(addD(pd(w),6)))}</button>`).join('')}</div>`;
+  const chips=sl=>sl.map(x=>{const[k,c]=x.split('|');return`<span class="chip">${dl(k)} · ${SH[c].n.replace('Ca ','')}</span>`}).join('');
+  if(isQL()){
+    const rs=S.regs.filter(r=>r.wk===ui.wk).sort((a,b)=>(a.st==='Chờ duyệt'?0:1)-(b.st==='Chờ duyệt'?0:1)||b.at-a.at);
+    return hdr('Đăng ký lịch làm việc','Duyệt đăng ký ca của nhân viên',['tasks','Tác vụ'])+`<div class="pad">${seg}<div class="list">
+      ${rs.map(r=>`<div class="item"><div class="r"><b>${esc(emp(r.e).n)}</b><span class="tag ${tc(r.st)}">${r.st}</span></div><div class="small muted">${r.slots.length} ca · gửi ${when(r.at)}</div><div>${chips(r.slots)}</div>${r.note?`<div class="small">${esc(r.note)}</div>`:''}
+      ${r.st==='Chờ duyệt'?`<div class="acts"><button class="btn sm" data-act="gok" data-id="${r.id}">Duyệt & xếp vào lịch</button><button class="btn alt sm" data-act="gno" data-id="${r.id}">Từ chối</button></div>`:''}</div>`).join('')||'<p class="empty">Chưa có ai đăng ký tuần này.</p>'}</div></div>`;
+  }
+  const reg=S.regs.find(r=>r.e===ME&&r.wk===ui.wk),locked=reg&&reg.st!=='Chờ duyệt';
+  if(!ui.sel||ui.selWk!==ui.wk){ui.sel=new Set(reg?reg.slots:[]);ui.selWk=ui.wk}
+  const days=[...Array(7)].map((_,i)=>dk(addD(pd(ui.wk),i)));
+  const grid=days.map(k=>`<div class="item" style="grid-template-columns:72px 1fr;align-items:center"><b>${dl(k)}</b><div class="acts">${Object.keys(SH).map(c=>{const id=k+'|'+c,on=ui.sel.has(id),sch=day(k)[c].includes(ME);
+    return sch&&!on?`<span class="chip me" title="Đã được xếp">${SH[c].n.replace('Ca ','')} ✓</span>`:`<button type="button" class="btn sm ${on?'gold':'alt'}" data-act="slot" data-id="${id}" aria-pressed="${on}" ${locked?'disabled':''}>${SH[c].n.replace('Ca ','')}</button>`}).join('')}</div></div>`).join('');
+  return hdr('Đăng ký lịch làm việc','Chọn những ca bạn có thể làm, quản lý sẽ duyệt',['tasks','Tác vụ'])+`<div class="pad">${seg}
+    ${reg?`<div class="card" style="margin-bottom:12px"><div class="r" style="display:flex;justify-content:space-between"><b>Đăng ký của bạn</b><span class="tag ${tc(reg.st)}">${reg.st}</span></div><div class="small muted">Gửi lúc ${when(reg.at)}${reg.st==='Chờ duyệt'?' · có thể sửa trước khi được duyệt':''}</div></div>`:''}
+    <div class="list">${grid}</div>
+    <form id="regf" class="sec"><div class="f"><label class="t" for="gn">Ghi chú cho quản lý</label><input id="gn" value="${esc(reg?reg.note:'')}" placeholder="Ví dụ: thứ 7 em đi học" ${locked?'disabled':''}></div>
+    <button class="btn big" ${locked||!ui.sel.size?'disabled':''}>${reg?'Cập nhật':'Gửi'} đăng ký (${ui.sel.size} ca)</button></form>
+    <p class="note">Ca có dấu ✓ là ca bạn đã được xếp sẵn. Mỗi ca tối đa 3 người.</p></div>`;
+}
+
+function vBangTin(){
+  const ps=S.posts.slice().sort((a,b)=>b.pin-a.pin||b.at-a.at);
+  const list=ps.map(p=>`<div class="item post${p.pin?' pin':''}"><div class="r"><b>${esc(p.title)}</b>${p.pin?'<span class="tag w">Ghim</span>':''}</div>
+    <div class="small muted">${esc(S.set.mgr)} · ${when(p.at)}</div><p>${esc(p.body)}</p>
+    <div class="acts">${isQL()?`<span class="small muted" style="align-self:center">${p.read.length}/${S.emps.length} đã đọc</span><button class="btn alt sm" data-act="pin" data-id="${p.id}">${p.pin?'Bỏ ghim':'Ghim'}</button><button class="btn alt sm" data-act="del" data-id="${p.id}">${ui.delArm===p.id?'Bấm lần nữa để xoá':'Xoá'}</button>`
+    :p.read.includes(ME)?'<span class="tag ok">Đã đọc</span>':`<button class="btn sm" data-act="read" data-id="${p.id}">Đánh dấu đã đọc</button>`}</div></div>`).join('')||'<p class="empty">Chưa có tin nào.</p>';
+  return hdr('Bảng tin','Thông báo chung của cửa hàng',['tasks','Tác vụ'])+`<div class="pad">
+    ${isQL()?`<form class="card" id="postf" style="margin-bottom:18px"><h2>Đăng tin mới</h2>
+      <div class="f"><label class="t" for="pt">Tiêu đề</label><input id="pt" required></div>
+      <div class="f"><label class="t" for="pb">Nội dung</label><textarea id="pb" rows="3" required></textarea></div>
+      <label style="display:flex;gap:8px;align-items:center;margin-bottom:12px"><input type="checkbox" id="pp"> Ghim lên đầu</label>
+      <button class="btn">Đăng tin</button></form>`:''}<div class="list">${list}</div></div>`;
+}
+
+function vNhanVien(){
+  if(!isQL())return vTasks();
+  return hdr('Nhân viên','Đơn giá, thêm người, quy định đi muộn',['tasks','Tác vụ'])+`<div class="pad">
+    <div class="list">${S.emps.map(e=>`<div class="item"><div class="r"><div style="display:flex;gap:10px;align-items:center"><span class="av">${esc(ini(e.n))}</span><div><b>${esc(e.n)}</b><div class="small muted">${esc(e.p)} · ${esc(e.ph||'')}</div></div></div>
+      <label class="small muted" style="display:flex;align-items:center;gap:6px">đ/giờ <input class="rate" type="number" step="1000" data-rate="${e.id}" value="${e.rate}" aria-label="Đơn giá của ${esc(e.n)}"></label></div></div>`).join('')}</div>
+    <div class="card sec"><h2>Thêm nhân viên</h2><p style="margin:0 0 8px">Nhân viên mới mở app, chọn <b>Tạo tài khoản</b> và nhập mã cửa hàng:</p><div class="money" style="font-size:28px">${esc(S.set.join)}</div><p class="small muted" style="margin:8px 0 0">Sau khi đăng ký, bạn chỉnh đơn giá ở danh sách phía trên.</p></div>
+    <div class="card sec"><h2>Quy định chấm công</h2><div class="f"><label class="t" for="gr">Cho phép trễ (phút)</label><input id="gr" type="number" min="0" max="60" value="${S.set.grace}"></div>
+      <div class="f"><label class="t" for="po">Ngày trả lương hằng tháng</label><input id="po" type="number" min="1" max="28" value="${S.set.payOut}"></div></div></div>`;
+}
+
+/* ---------- TIN NHẮN ---------- */
+const threads=()=>isQL()?[{id:'all',n:'Cả cửa hàng',g:1},...S.emps.map(e=>({id:e.id,n:e.n}))]:[{id:'all',n:'Cả cửa hàng',g:1},{id:ME,n:'Quản lý '+S.set.mgr}];
+function vMsg(){
+  const th=threads().map(t=>({...t,last:S.msgs.filter(m=>m.t===t.id).slice(-1)[0]})).sort((a,b)=>(b.last?b.last.at:0)-(a.last?a.last.at:0));
+  return hdr('Tin nhắn',isQL()?'Nhắn riêng từng bạn hoặc cả cửa hàng':'Trao đổi với quản lý và đồng nghiệp')+`<div class="pad" style="padding-top:4px">
+    ${th.map(t=>`<a class="thread" href="#chat-${t.id}"><span class="av${t.g?' g':''}">${t.g?'MT':esc(ini(t.n.replace('Quản lý ','')))}</span><span class="tx"><b>${esc(t.n)}</b><div class="pv">${t.last?esc((t.last.f===(isQL()?QL:ME)?'Bạn: ':t.g?short(emp(t.last.f).n)+': ':'')+t.last.x):'Chưa có tin nhắn'}</div></span><span class="small muted">${t.last?when(t.last.at):''}</span></a>`).join('')}</div>`;
+}
+function vChat(id){
+  const t=threads().find(x=>x.id===id);if(!t)return vMsg();
+  const me=isQL()?QL:ME;
+  const ms=S.msgs.filter(m=>m.t===id);
+  return hdr(esc(t.n),t.g?`${S.emps.length+1} thành viên`:'',['msg','Tin nhắn'])+`<div class="pad"><div class="chat" id="chat">
+    ${ms.map(m=>`<div class="bub${m.f===me?' mine':''}">${t.g&&m.f!==me?`<div class="from">${esc(short(emp(m.f).n))}</div>`:''}${esc(m.x)}<small>${when(m.at)}</small></div>`).join('')||'<p class="empty">Hãy gửi lời chào đầu tiên.</p>'}</div></div>
+    <form class="composer" id="msgf" data-id="${id}"><input id="mx" placeholder="Nhập tin nhắn…" autocomplete="off" aria-label="Tin nhắn"><button class="btn">Gửi</button></form>`;
+}
+
+/* ---------- TÀI KHOẢN ---------- */
+function vAcc(){
+  const m=S.me;
+  return hdr('Tài khoản','')+`<div class="pad">
+    <div class="card" style="display:flex;gap:14px;align-items:center"><span class="av g" style="width:60px;height:60px;font-size:20px">${esc(ini(m.full_name))}</span><div><b style="font-size:18px">${esc(m.full_name)}</b><div class="muted small">${esc(m.position)} · ${esc(S.set.store)}</div><div class="muted small">${esc(m.phone||'')}</div></div></div>
+    <div class="list sec">
+      ${isQL()?`<div class="card"><div class="small muted">Mã cửa hàng để nhân viên tự đăng ký</div><div class="money" style="font-size:28px">${esc(S.set.join)}</div></div>
+      <div class="card"><div class="f" style="margin:0"><label class="t" for="sn">Tên cửa hàng</label><input id="sn" value="${esc(S.set.store)}"></div></div>`:''}
+      <button class="btn alt" data-act="logout">Đăng xuất</button>
+    </div><p class="note">Chấm công QR/Wi-Fi hiện ghi nhận cách chấm; giờ vào/ra luôn lấy theo giờ máy chủ.</p></div>`;
+}
+
+function vLogin(){
+  if(!sb)return`<div class="welcome"><h1>Chưa cấu hình</h1><p>Điền SUPABASE URL và publishable key vào file <b>config.js</b> (xem README).</p></div>`;
+  const su=ui.signup;
+  return`<div class="welcome"><div class="brand" style="font-size:18px">Nhà sách Minh Tú</div><h1>Chấm công &amp; xếp ca</h1>
+    <p>${su?'Tạo tài khoản nhân viên bằng mã cửa hàng do quản lý cung cấp':'Đăng nhập để tiếp tục'}</p>
+    <form id="loginf" class="card" style="color:var(--ink)">
+      ${su?`<div class="f"><label class="t" for="lname">Họ tên</label><input id="lname" required autocomplete="name"></div>
+      <div class="f"><label class="t" for="lphone">Số điện thoại</label><input id="lphone" inputmode="tel" autocomplete="tel"></div>
+      <div class="f"><label class="t" for="lcode">Mã cửa hàng</label><input id="lcode" required autocapitalize="characters"></div>`:''}
+      <div class="f"><label class="t" for="lemail">Email</label><input id="lemail" type="email" required autocomplete="email"></div>
+      <div class="f"><label class="t" for="lpw">Mật khẩu</label><input id="lpw" type="password" required minlength="8" autocomplete="${su?'new-password':'current-password'}"></div>
+      <button class="btn big">${su?'Tạo tài khoản':'Đăng nhập'}</button>
+      <p class="small" style="margin:12px 0 0;min-height:20px;color:var(--red)" id="lerr" role="alert">${esc(ui.lerr||'')}</p>
+    </form>
+    <button type="button" class="alt-link" data-act="signup" style="background:none;color:#fff;font-size:15px;padding:8px;border:0;text-decoration:underline;cursor:pointer;min-height:44px">${su?'Đã có tài khoản? Đăng nhập':'Nhân viên mới? Tạo tài khoản'}</button></div>`;
+}
+
+const APP=document.getElementById('app');
+function render(){
+  if(!S){APP.innerHTML=ui.loading?'<div class="welcome"><h1>Đang tải…</h1></div>':vLogin();return}
+  const h=location.hash.slice(1)||'home';
+  let body,tab='home';
+  if(h.startsWith('chat-')){body=vChat(h.slice(5));tab='msg'}
+  else if(SUB[h]){body={lichchung:vLich,dangky:vDangKy,tamung:vTamUng,luonggiu:vLuongGiu,tangluong:vTangLuong,lichsutang:vLichSuTang,phieuluong:vPhieuLuong,yeucau:vYeuCau,kyluong:vKyLuong,bangtin:vBangTin,nhanvien:vNhanVien}[SUB[h]]();tab='tasks'}
+  else{tab={home:'home',tasks:'tasks',msg:'msg',acc:'acc'}[h]||'home';body={home:vHome,tasks:vTasks,msg:vMsg,acc:vAcc}[tab]()}
+  const dot={tasks:isQL()?pending()+pAdv()+pReg():unreadPosts()};
+  APP.innerHTML=body+`<nav class="tabbar" aria-label="Điều hướng">${[['home','Trang chủ'],['tasks','Tác vụ'],['msg','Tin nhắn'],['acc','Tài khoản']].map(([k,n])=>`<a href="#${k}" class="${k===tab?'on':''}"${k===tab?' aria-current="page"':''}>${ico(k)}${n}${dot[k]?`<span class="dot">${dot[k]}</span>`:''}</a>`).join('')}</nav>`;
+  const c=document.getElementById('chat');if(c)c.lastElementChild&&c.lastElementChild.scrollIntoView({block:'end'});
+  tick();
+}
+function tick(){const c=document.getElementById('clock');if(c){const d=new Date();c.textContent=pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds())}}
+setInterval(tick,1000);
+
+const rpc=(n,a)=>sb.rpc(n,a);
+const upd=(t,v,id)=>sb.from(t).update(v).eq('id',id);
+APP.addEventListener('click',ev=>{
+  const b=ev.target.closest('[data-act]');if(!b||b.tagName==='SELECT')return;
+  const a=b.dataset.act,c=b.dataset.c,k=ui.day,id=b.dataset.id;
+  if(a==='signup'){ui.signup=!ui.signup;ui.lerr='';render();return}
+  if(a==='punch'){
+    const open=S.logs.find(l=>l.e===ME&&l.d===tk()&&l.o==null),m=(APP.querySelector('input[name=m]:checked')||{}).value;
+    if(open)act(()=>rpc('clock_out'),r=>`Đã kết thúc ca lúc ${hm(toMin(r.check_out))}`);
+    else act(()=>rpc('clock_in',{p_method:m}),r=>r.late_minutes?`Đã vào ca · muộn ${r.late_minutes} phút`:`Đã vào ca lúc ${hm(toMin(r.check_in))}`);
+    return}
+  if(a==='pick'){ui.day=b.dataset.k;render();return}
+  if(a==='slipe'){ui.slipE=id;if(location.hash==='#phieuluong')render();return}
+  if(a==='wkp'){ui.wk=b.dataset.w;render();return}
+  if(a==='slot'){ui.sel.has(id)?ui.sel.delete(id):ui.sel.add(id);render();return}
+  if(a==='form'){ui.form=!ui.form;render();return}
+  if(a==='rf'){ui.reqf=b.dataset.f;render();return}
+  if(a==='per'){ui.per=+b.dataset.i;render();return}
+  if(a==='aok'||a==='ano')return act(()=>rpc('review_advance',{p_id:id,p_approve:a==='aok'}),a==='aok'?'Đã duyệt tạm ứng':'Đã từ chối tạm ứng');
+  if(a==='rel')return act(()=>rpc('release_hold',{p_id:id}),'Đã trả lại khoản giữ lương');
+  if(a==='rcyc')return act(()=>upd('profiles',{raise_cycle_start:tk()},id),'Đã bắt đầu chu kỳ tăng lương mới');
+  if(a==='gok'||a==='gno')return act(()=>rpc('review_registration',{p_id:id,p_approve:a==='gok'}),a==='gok'?'Đã duyệt và xếp vào lịch':'Đã từ chối đăng ký');
+  if(a==='rm')return act(()=>sb.from('shift_assignments').delete().match({work_date:k,shift_id:SHID[c],staff_id:id}),'Đã bỏ khỏi ca');
+  if(a==='ok'||a==='no')return act(()=>rpc('review_request',{p_id:id,p_approve:a==='ok'}),a==='ok'?'Đã duyệt yêu cầu':'Đã từ chối yêu cầu');
+  if(a==='chot'||a==='tra'){const p=periods()[ui.per];return act(()=>rpc('set_period_status',{p_start:p.s,p_status:a==='chot'?'closed':'paid'}),a==='chot'?'Đã chốt kỳ lương':'Đã đánh dấu trả lương')}
+  if(a==='csv'){const p=periods()[ui.per];
+    const lines=['Nhân viên,Vị trí,Kỳ,Số ca,Giờ công,Đi muộn,Lương giờ công,Tạm ứng,Giữ lương,Trả lại,Thực nhận'].concat(S.emps.map(e=>{const s=slip(p,e.id);return[`"${e.n.replace(/"/g,'""')}"`,`"${e.p}"`,`${dm(p.s)}-${dm(p.e)}`,s.n,s.h.toFixed(2),s.late,Math.round(s.pay),s.adv,s.hold,s.rel,Math.round(s.net)].join(',')}));
+    try{navigator.clipboard.writeText(lines.join('\n')).then(()=>toast('Đã sao chép, dán vào Excel/Google Sheets'),()=>toast('Trình duyệt chặn sao chép'))}catch(e){toast('Trình duyệt chặn sao chép')}
+    return}
+  if(a==='read')return act(()=>sb.from('post_reads').insert({post_id:id,staff_id:ME}),'Đã đánh dấu đã đọc');
+  if(a==='pin'){const p=S.posts.find(x=>x.id===id);return act(()=>upd('posts',{pinned:!p.pin},id),p.pin?'Đã bỏ ghim':'Đã ghim tin')}
+  if(a==='del'){if(ui.delArm!==id){ui.delArm=id;render();return}ui.delArm=null;return act(()=>sb.from('posts').delete().eq('id',id),'Đã xoá tin')}
+  if(a==='logout'){sb.auth.signOut().finally(()=>{S=null;history.replaceState(null,'',location.pathname);render()});return}
+});
+APP.addEventListener('change',ev=>{
+  const t=ev.target,sid=S&&S.me.store_id,num=(v,lo,hi)=>Math.max(lo,Math.min(hi,Math.round(+v||0)));
+  const setStore=(v,msg)=>act(()=>sb.from('stores').update(v).eq('id',sid),msg);
+  if(t.dataset.act==='add'&&t.value)return act(()=>sb.from('shift_assignments').insert({store_id:sid,work_date:ui.day,shift_id:SHID[t.dataset.c],staff_id:t.value}),'Đã xếp vào ca');
+  if(t.dataset.rate)return act(()=>upd('profiles',{hourly_rate:num(t.value,0,10000000)},t.dataset.rate),'Đã lưu đơn giá');
+  if(t.id==='slipe'){ui.slipE=t.value;render();return}
+  if(t.id==='advmax')return setStore({advance_limit:num(t.value,0,1e9)},'Đã lưu hạn mức tạm ứng');
+  if(['rh','rst','rmx','rlt'].includes(t.id)){
+    const col={rh:'raise_hours',rst:'raise_step',rmx:'raise_max_rate',rlt:'raise_max_late'}[t.id],v=num(t.value,t.id==='rh'?10:0,1e7);
+    return act(async()=>{chk(await sb.from('stores').update({[col]:v}).eq('id',sid));return rpc('run_auto_raises')},r=>r?`Đã lưu quy tắc · tự động tăng lương cho ${r} nhân viên`:'Đã lưu quy tắc tăng lương')}
+  if(t.id==='payday'){ui.per=0;return setStore({pay_start_day:num(t.value,1,28)},'Kỳ lương bắt đầu từ ngày '+t.value)}
+  if(t.id==='gr')return setStore({grace_minutes:num(t.value,0,60)},'Đã lưu thời gian cho phép trễ');
+  if(t.id==='po')return setStore({pay_out_day:num(t.value,1,28)},'Đã lưu ngày trả lương');
+  if(t.id==='sn'&&t.value.trim())return setStore({name:t.value.trim()},'Đã lưu tên cửa hàng');
+});
+APP.addEventListener('submit',async ev=>{
+  ev.preventDefault();const f=ev.target,q=s=>f.querySelector(s),sid=S&&S.me.store_id;
+  if(f.id==='loginf'){
+    const email=q('#lemail').value.trim(),password=q('#lpw').value;ui.lerr='';
+    const btn=q('button');btn.disabled=true;
+    try{
+      if(ui.signup){
+        const r=await sb.auth.signUp({email,password,options:{data:{full_name:q('#lname').value.trim(),phone:q('#lphone').value.trim(),join_code:q('#lcode').value.trim()}}});
+        if(r.error)throw r.error;
+        if(!r.data.session){ui.signup=false;ui.lerr='';toast('Đã tạo tài khoản. Kiểm tra email để xác nhận rồi đăng nhập.');render();return}
+      }else{const r=await sb.auth.signInWithPassword({email,password});if(r.error)throw r.error}
+      await boot();
+    }catch(e){ui.lerr=/Database error saving new user/i.test(e.message||'')?'Mã cửa hàng không đúng':errMsg(e);render()}
+    return}
+  if(f.id==='reqf'){ui.form=false;return act(()=>sb.from('requests').insert({store_id:sid,staff_id:ME,type:q('#rt').value,for_date:q('#rd').value||tk(),note:q('#rn').value.trim()}),'Đã gửi, chờ quản lý duyệt')}
+  if(f.id==='advf')return act(()=>rpc('request_advance',{p_amount:Math.round(+q('#aa').value||0),p_reason:q('#aw').value.trim()}),'Đã gửi đơn tạm ứng');
+  if(f.id==='holdf')return act(()=>sb.from('salary_holds').insert({store_id:sid,staff_id:q('#he').value,amount:Math.round(+q('#ha').value||0),reason:q('#hw').value.trim(),held_on:tk(),due_on:q('#hd').value||tk(),created_by:ME}),'Đã thêm khoản giữ lương');
+  if(f.id==='regf'){if(!ui.sel.size)return;const slots=[...ui.sel].sort().map(x=>{const[d,s]=x.split('|');return{date:d,shift:s}});
+    return act(()=>rpc('submit_registration',{p_week_start:ui.wk,p_slots:slots,p_note:q('#gn').value.trim()}),`Đã gửi đăng ký ${slots.length} ca`)}
+  if(f.id==='postf')return act(()=>sb.from('posts').insert({store_id:sid,author_id:ME,title:q('#pt').value.trim(),body:q('#pb').value.trim(),pinned:q('#pp').checked}),'Đã đăng lên bảng tin');
+  if(f.id==='msgf'){const x=q('#mx').value.trim();if(!x)return;const th=f.dataset.id==='all'?null:f.dataset.id;
+    await act(()=>sb.from('messages').insert({store_id:sid,thread_staff_id:th,sender_id:ME,body:x}));const i=document.getElementById('mx');if(i)i.focus();return}
+});
+addEventListener('hashchange',()=>{ui.form=false;ui.delArm=null;render();scrollTo(0,0)});
+async function boot(){
+  ui.loading=true;render();
+  try{await load();if(S)live()}catch(e){S=null;toast(errMsg(e))}
+  ui.loading=false;render();
+}
+if(sb){sb.auth.onAuthStateChange(ev=>{if(ev==='SIGNED_OUT'){S=null;render()}});boot()}else render();
+}
+</script>
+</body>
+</html>

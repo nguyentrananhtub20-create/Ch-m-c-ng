@@ -1,0 +1,32 @@
+# Cấu hình cho Supabase CLI (supabase start / supabase db push)
+project_id = "minhtu-chamcong"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+max_rows = 1000
+
+[db]
+port = 54322
+major_version = 17
+
+[db.seed]
+enabled = true
+sql_paths = ["./seed.sql"]
+
+[realtime]
+enabled = true
+
+[auth]
+enabled = true
+site_url = "http://127.0.0.1:5500"
+additional_redirect_urls = ["http://localhost:5500"]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+enable_signup = true
+minimum_password_length = 8
+
+[auth.email]
+enable_signup = true
+enable_confirmations = false
